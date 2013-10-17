@@ -96,15 +96,14 @@ int           deflateInit2_(        z_stream*, int level, int method, int window
 ]])
 
 local zlib = ffi.load(ffi.os == "Windows" and "zlib1" or "z")
+-- Default to 16k output buffer
+local DEFAULT_CHUNK = 16384
 
 local function zlib_err(err)
     return ffi_str(zlib.zError(err))
 end
 
 local function createStream(bufsize)
-    -- Default to 16k output buffer
-    local bufsize = bufsize or 16384
-
     -- Setup Stream
     local stream = ffi_new("z_stream")
 
@@ -190,6 +189,8 @@ local function flate(flate, flateEnd, input, output, bufsize, stream, inbuf, out
 end
 
 function _M.inflateGzip(input, output, bufsize)
+    local bufsize = bufsize or DEFAULT_CHUNK
+
     -- Takes 2 functions that provide input data from a gzip stream and receives output data
     -- Returns uncompressed string
     local stream, inbuf, outbuf = createStream(bufsize)
@@ -205,6 +206,8 @@ function _M.inflateGzip(input, output, bufsize)
 end
 
 function _M.deflateGzip(input, output, bufsize)
+    local bufsize = bufsize or DEFAULT_CHUNK
+
     -- Takes 2 functions that provide plain input data and receives output data
     -- Returns gzip compressed string
     local stream, inbuf, outbuf = createStream(bufsize)
