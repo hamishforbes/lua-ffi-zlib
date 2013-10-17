@@ -1,10 +1,8 @@
 local ffi = require "ffi"
 local ffi_new = ffi.new
 local ffi_str = ffi.string
-local ffi_sizeof =ffi.sizeof
+local ffi_sizeof = ffi.sizeof
 local ffi_copy = ffi.copy
-local setmetatable = setmetatable
-local error = error
 
 local _M = {
     _VERSION = '0.01',
@@ -14,7 +12,6 @@ local mt = { __index = _M }
 
 
 ffi.cdef([[
-
 enum {
     Z_NO_FLUSH           = 0,
     Z_PARTIAL_FLUSH      = 1,
@@ -79,18 +76,16 @@ typedef struct z_stream_s {
 } z_stream;
 
 
-const char*   zlibVersion(          );
+const char*   zlibVersion();
+const char*   zError(int);
 
-const char*   zError(               int );
+int inflate(z_stream*, int flush);
+int inflateEnd(z_stream*);
+int inflateInit2_(z_stream*, int windowBits, const char* version, int stream_size);
 
-int           inflate(              z_stream*, int flush );
-int           inflateEnd(           z_stream*  );
-int           inflateInit2_(        z_stream*, int windowBits, const char* version, int stream_size);
-
-int           deflate(              z_stream*, int flush );
-int           deflateEnd(           z_stream*  );
-int           deflateInit2_(        z_stream*, int level, int method, int windowBits, int memLevel,
-                       int strategy, const char *version, int stream_size );
+int deflate(z_stream*, int flush);
+int deflateEnd(z_stream* );
+int deflateInit2_(z_stream*, int level, int method, int windowBits, int memLevel,int strategy, const char *version, int stream_size);
 
 
 ]])
@@ -147,7 +142,6 @@ local function flushOutput(stream, bufsize, output, outbuf)
     -- Read bytes from output buffer and pass to output function
     output(ffi_str(outbuf, out_sz))
 end
-
 
 local function flate(flate, flateEnd, input, output, bufsize, stream, inbuf, outbuf)
     -- Inflate or Deflate a stream
@@ -221,6 +215,5 @@ function _M.deflateGzip(input, output, bufsize)
         return false, "INIT: "..zlib_err(init)
     end
 end
-
 
 return _M
