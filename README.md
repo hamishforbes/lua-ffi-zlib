@@ -12,17 +12,17 @@ Currently only provides gzip compression and decompression
  * `input` should be a function that accepts a chunksize as its only argument and return that many bytes of the gzip stream
  * `output` will receive a string of decompressed data as its only argument, do with it as you will!
  * `chunk` is the size of the input and output buffers, this defaults to 16KB
- 
+
 On error returns `false` and the error message, otherwise `true` and the last status message
-    
+
 ## deflateGzip
 `Syntax: ok, err = deflateGzip(input, output, chunk)`
  * `input` should be a function that accepts a chunksize as its only argument and return that many bytes of uncompressed data.
  * `output` will receive a string of compressed data as its only argument, do with it as you will!
  * `chunk` is the size of the input and output buffers, this defaults to 16KB
- * 
+
 On error returns `false` and the error message, otherwise `true` and the last status message
-    
+
 # Example
 Reads a file and output the decompressed version.
 

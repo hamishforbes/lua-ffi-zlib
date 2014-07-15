@@ -3,6 +3,7 @@ local ffi_new = ffi.new
 local ffi_str = ffi.string
 local ffi_sizeof = ffi.sizeof
 local ffi_copy = ffi.copy
+local tonumber = tonumber
 
 local _M = {
     _VERSION = '0.01',
@@ -87,20 +88,28 @@ int deflate(z_stream*, int flush);
 int deflateEnd(z_stream* );
 int deflateInit2_(z_stream*, int level, int method, int windowBits, int memLevel,int strategy, const char *version, int stream_size);
 
+unsigned long adler32(unsigned long adler, const char *buf, unsigned len);
+unsigned long crc32(unsigned long crc,   const char *buf, unsigned len);
+unsigned long adler32_combine(unsigned long, unsigned long, long);
+unsigned long crc32_combine(unsigned long, unsigned long, long);
 
 ]])
 
 local zlib = ffi.load(ffi.os == "Windows" and "zlib1" or "z")
+_M.zlib = zlib
+
 -- Default to 16k output buffer
 local DEFAULT_CHUNK = 16384
-local Z_OK = zlib.Z_OK
-local Z_NO_FLUSH = zlib.Z_NO_FLUSH
+
+local Z_OK         = zlib.Z_OK
+local Z_NO_FLUSH   = zlib.Z_NO_FLUSH
 local Z_STREAM_END = zlib.Z_STREAM_END
-local Z_FINISH = zlib.Z_FINISH
+local Z_FINISH     = zlib.Z_FINISH
 
 local function zlib_err(err)
     return ffi_str(zlib.zError(err))
 end
+_M.zlib_err = zlib_err
 
 local function createStream(bufsize)
     -- Setup Stream
@@ -116,26 +125,29 @@ local function createStream(bufsize)
 
     return stream, inbuf, outbuf
 end
+_M.createStream = createStream
 
-local function initInflate(stream)
+local function initInflate(stream, options)
     -- Setup inflate process
-    local windowBits = 15 + 32 -- +32 sets automatic header detection
-    local version = ffi_str(zlib.zlibVersion())
-    local init = zlib.inflateInit2_(stream, windowBits, version, ffi_sizeof(stream))
-    return init
-end
+    local windowBits = options.windowBits or (15 + 32) -- +32 sets automatic header detection
+    local version    = ffi_str(zlib.zlibVersion())
 
-local function initDeflate(stream, level, method, memLevel, strategy)
-    -- Setup deflate process
-    local level = level or zlib.Z_DEFAULT_COMPRESSION
-    local method = method or zlib.Z_DEFLATED
-    local memLevel = memLevel or 8
-    local strategy = strategy or zlib.Z_DEFAULT_STRATEGY
-    local windowBits = 15 + 16 -- +16 sets gzip wrapper not zlib
-    local version = ffi_str(zlib.zlibVersion())
-    local init = zlib.deflateInit2_(stream, level, method, windowBits, memLevel, strategy, version, ffi_sizeof(stream))
-    return init
+    return zlib.inflateInit2_(stream, windowBits, version, ffi_sizeof(stream))
 end
+_M.initInflate = initInflate
+
+local function initDeflate(stream, options)
+    -- Setup deflate process
+    local method     = zlib.Z_DEFLATED
+    local level      = options.level      or zlib.Z_DEFAULT_COMPRESSION
+    local memLevel   = options.memLevel   or 8
+    local strategy   = options.strategy   or zlib.Z_DEFAULT_STRATEGY
+    local windowBits = options.windowBits or (15 + 16) -- +16 sets gzip wrapper not zlib
+    local version    = ffi_str(zlib.zlibVersion())
+
+    return zlib.deflateInit2_(stream, level, method, windowBits, memLevel, strategy, version, ffi_sizeof(stream))
+end
+_M.initDeflate = initDeflate
 
 local function flushOutput(stream, bufsize, output, outbuf)
     -- Calculate available output bytes
@@ -146,8 +158,9 @@ local function flushOutput(stream, bufsize, output, outbuf)
     -- Read bytes from output buffer and pass to output function
     output(ffi_str(outbuf, out_sz))
 end
+_M.flushOutput = flushOutput
 
-local function flate(flate, flateEnd, input, output, bufsize, stream, inbuf, outbuf)
+local function flate(zlib_flate, zlib_flateEnd, input, output, bufsize, stream, inbuf, outbuf)
     -- Inflate or Deflate a stream
     local err = 0
     local mode = Z_NO_FLUSH
@@ -165,13 +178,13 @@ local function flate(flate, flateEnd, input, output, bufsize, stream, inbuf, out
 
         -- While the output buffer is being filled completely just keep going
         repeat
-            stream.next_out = outbuf
+            stream.next_out  = outbuf
             stream.avail_out = bufsize
-            -- Decompress!
-            err = flate(stream, mode)
+            -- Process the stream
+            err = zlib_flate(stream, mode)
             if err < Z_OK then
-                -- Error :(
-                flateEnd(stream)
+                -- Error, clean up and return
+                zlib_flateEnd(stream)
                 return false, "FLATE: "..zlib_err(err), stream
             end
             -- Write the data out
@@ -181,19 +194,35 @@ local function flate(flate, flateEnd, input, output, bufsize, stream, inbuf, out
     until err == Z_STREAM_END
 
     -- Stream finished, clean up and return
-    flateEnd(stream)
+    zlib_flateEnd(stream)
     return true, zlib_err(err)
-
 end
+_M.flate = flate
 
-function _M.inflateGzip(input, output, bufsize)
+local function adler(str, chksum)
+    local chksum = chksum or 0
+    local str = str or ""
+    return zlib.adler32(chksum, str, #str)
+end
+_M.adler = adler
+
+local function crc(str, chksum)
+    local chksum = chksum or 0
+    local str = str or ""
+    return zlib.crc32(chksum, str, #str)
+end
+_M.crc = crc
+
+function _M.inflateGzip(input, output, bufsize, options)
     local bufsize = bufsize or DEFAULT_CHUNK
+    options = options or {}
 
     -- Takes 2 functions that provide input data from a gzip stream and receives output data
     -- Returns uncompressed string
     local stream, inbuf, outbuf = createStream(bufsize)
 
-    if initInflate(stream) == Z_OK then
+    local init = initInflate(stream, options)
+    if init == Z_OK then
         local ok, err = flate(zlib.inflate, zlib.inflateEnd, input, output, bufsize, stream, inbuf, outbuf)
         return ok,err
     else
@@ -203,14 +232,16 @@ function _M.inflateGzip(input, output, bufsize)
     end
 end
 
-function _M.deflateGzip(input, output, bufsize)
+function _M.deflateGzip(input, output, bufsize, options)
     local bufsize = bufsize or DEFAULT_CHUNK
+    options = options or {}
 
     -- Takes 2 functions that provide plain input data and receives output data
     -- Returns gzip compressed string
     local stream, inbuf, outbuf = createStream(bufsize)
 
-    if initDeflate(stream) == Z_OK then
+    local init = initDeflate(stream, options)
+    if init == Z_OK then
         local ok, err = flate(zlib.deflate, zlib.deflateEnd, input, output, bufsize, stream, inbuf, outbuf)
         return ok,err
     else
@@ -218,6 +249,10 @@ function _M.deflateGzip(input, output, bufsize)
         zlib.deflateEnd(stream)
         return false, "INIT: "..zlib_err(init)
     end
+end
+
+function _M.version()
+    return ffi_str(zlib.zlibVersion())
 end
 
 return _M
