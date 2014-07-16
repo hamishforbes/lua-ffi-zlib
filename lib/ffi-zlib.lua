@@ -127,9 +127,9 @@ local function createStream(bufsize)
 end
 _M.createStream = createStream
 
-local function initInflate(stream, options)
+local function initInflate(stream, windowBits)
     -- Setup inflate process
-    local windowBits = options.windowBits or (15 + 32) -- +32 sets automatic header detection
+    local windowBits = windowBits or (15 + 32) -- +32 sets automatic header detection
     local version    = ffi_str(zlib.zlibVersion())
 
     return zlib.inflateInit2_(stream, windowBits, version, ffi_sizeof(stream))
@@ -158,7 +158,6 @@ local function flushOutput(stream, bufsize, output, outbuf)
     -- Read bytes from output buffer and pass to output function
     output(ffi_str(outbuf, out_sz))
 end
-_M.flushOutput = flushOutput
 
 local function flate(zlib_flate, zlib_flateEnd, input, output, bufsize, stream, inbuf, outbuf)
     -- Inflate or Deflate a stream
@@ -213,15 +212,14 @@ local function crc(str, chksum)
 end
 _M.crc = crc
 
-function _M.inflateGzip(input, output, bufsize, options)
+function _M.inflateGzip(input, output, bufsize, windowBits)
     local bufsize = bufsize or DEFAULT_CHUNK
-    options = options or {}
 
     -- Takes 2 functions that provide input data from a gzip stream and receives output data
     -- Returns uncompressed string
     local stream, inbuf, outbuf = createStream(bufsize)
 
-    local init = initInflate(stream, options)
+    local init = initInflate(stream, windowBits)
     if init == Z_OK then
         local ok, err = flate(zlib.inflate, zlib.inflateEnd, input, output, bufsize, stream, inbuf, outbuf)
         return ok,err
