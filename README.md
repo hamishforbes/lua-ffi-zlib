@@ -73,19 +73,23 @@ Others are lower level utility functions.
 
 ## createStream
 `Synax: stream, inbuf, outbuf = createStream(bufsize)`
+
 Returns a z_stream struct, input buffer and output buffer of length `bufsize`
 
 ##  initInflate
 `Syntax: ok = initInflate(stream, windowBits?)`
+
 Calls zlib's inflateInit2 with given stream, defaults to automatic header detection.
 
 ## initDeflate
 `Syntax: ok = initDeflate(stream, options?)`
+
 Calls zlib's deflateInit2 with the given stream.
 `options` is an optional table that can set level, memLevel, strategy and windowBits
 
 ## flate
 `Syntax: ok, err = flate(zlib_flate, zlib_flateEnd, input, output, bufsize, stream, inbuf, outbuf)`
+
  * `zlib_flate` is either zlib's deflate or inflate functions.
  * `zlib_flateEnd` is either zlib's deflateEnd or inflateEnd functions.
  * `input` is a function that takes a chunk size argument and returns at most that many input bytes
@@ -99,12 +103,15 @@ It will then clean up the stream and return an error code
 
 ## adler
 `Syntax: chksum = adler(str, chksum?)`
+
 Computes an adler32 checksum for a string, updates an existing checksum if provided
 
 ## crc
 `Syntax: chksum = crc(str, chksum?)`
+
 Computes an crc32 checksum for a string, updates an existing checksum if provided
 
 ## zlib_err
 `Syntax: err = zlib_err(code)`
+
 Returns the string representation of a zlib error code
