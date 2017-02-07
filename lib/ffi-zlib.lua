@@ -106,8 +106,7 @@ local Z_NO_FLUSH   = zlib.Z_NO_FLUSH
 local Z_STREAM_END = zlib.Z_STREAM_END
 local Z_FINISH     = zlib.Z_FINISH
 local Z_NEED_DICT  = zlib.Z_NEED_DICT
-local Z_DATA_ERROR = zlib.Z_DATA_ERROR
-local Z_MEM_ERROR  = zlib.Z_MEM_ERROR
+local Z_BUF_ERROR  = zlib.Z_BUF_ERROR
 
 local function zlib_err(err)
     return ffi_str(zlib.zError(err))
@@ -184,10 +183,14 @@ local function flate(zlib_flate, zlib_flateEnd, input, output, bufsize, stream, 
             stream.avail_out = bufsize
             -- Process the stream
             err = zlib_flate(stream, mode)
-            if err == Z_NEED_DICT then
-               err = Z_DATA_ERROR
+
+            -- From the zlib docs:
+            -- Note that a Z_BUF_ERROR is not fatal--another call to deflate() or inflate() can be made with more input or output space.
+            if err == Z_BUF_ERROR then
+               err = Z_OK
             end
-            if err == Z_DATA_ERROR or err == Z_MEM_ERROR then
+
+            if err < Z_OK or err == Z_NEED_DICT then
                -- Error, clean up and return
                zlib_flateEnd(stream)
                return false, "FLATE: "..zlib_err(err), stream
