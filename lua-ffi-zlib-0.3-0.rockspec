@@ -1,8 +1,8 @@
 package = "lua-ffi-zlib"
-version = "0.2-0"
+version = "0.3-0"
 source = {
   url = "git://github.com/hamishforbes/lua-ffi-zlib",
-  tag = "v0.2"
+  tag = "v0.3"
 }
 description = {
   summary = "A Lua module using LuaJIT's FFI feature to access zlib.",
