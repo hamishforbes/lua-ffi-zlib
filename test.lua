@@ -72,8 +72,13 @@ output_table = {}
 local count = 0
 local input = function(bufsize)
     local start = count > 0 and bufsize*count or 1
-    local data = compressed:sub(start, (bufsize*(count+1)-1) )
+    local finish = (bufsize*(count+1)-1)
     count = count + 1
+    if bufsize == 1 then
+        start = count
+        finish = count
+    end
+    local data = compressed:sub(start, finish)
     in_crc = zlib.crc(data, in_crc)
     in_adler = zlib.adler(data, in_adler)
     return data
