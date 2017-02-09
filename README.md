@@ -13,7 +13,7 @@ Basic methods allowing for simple compression or decompression of gzip data
  * `input` should be a function that accepts a chunksize as its only argument and return that many bytes of the gzip stream
  * `output` will receive a string of decompressed data as its only argument, do with it as you will!
  * `chunk` is the size of the input and output buffers, optional and defaults to 16KB
- * `windowBits` is passed to `inflateInit2()`, should be left as default for most cases. 
+ * `windowBits` is passed to `inflateInit2()`, should be left as default for most cases.
     See [zlib manual](http://zlib.net/manual.html) for details
 
 On error returns `false` and the error message, otherwise `true` and the last status message
@@ -87,11 +87,21 @@ Calls zlib's inflateInit2 with given stream, defaults to automatic header detect
 Calls zlib's deflateInit2 with the given stream.
 `options` is an optional table that can set level, memLevel, strategy and windowBits
 
-## flate
-`Syntax: ok, err = flate(zlib_flate, zlib_flateEnd, input, output, bufsize, stream, inbuf, outbuf)`
+## deflate
+`Syntax: ok, err = deflate(input, output, bufsize, stream, inbuf, outbuf)`
 
- * `zlib_flate` is either zlib's deflate or inflate functions.
- * `zlib_flateEnd` is either zlib's deflateEnd or inflateEnd functions.
+ * `input` is a function that takes a chunk size argument and returns at most that many input bytes
+ * `output` is a function that takes a string argument of output data
+ * `bufsize` is the length of the output buffer
+ * `inbuf` cdata input buffer
+ * `outpuf` ccdata output buffer
+
+This function will loop until all input data is consumed (`input` returns nil) or an error occurs.
+It will then clean up the stream and return an error code
+
+## inflate
+`Syntax: ok, err = inflate(input, output, bufsize, stream, inbuf, outbuf)`
+
  * `input` is a function that takes a chunk size argument and returns at most that many input bytes
  * `output` is a function that takes a string argument of output data
  * `bufsize` is the length of the output buffer
