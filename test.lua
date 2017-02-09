@@ -3,7 +3,7 @@ local table_concat = table.concat
 
 local zlib = require('lib.ffi-zlib')
 
-local chunk = 16384
+local chunk = tonumber(arg[2]) or 16384
 local uncompressed = ''
 local input
 local f
