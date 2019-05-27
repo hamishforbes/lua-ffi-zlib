@@ -159,7 +159,10 @@ local function flushOutput(stream, bufsize, output, outbuf)
         return
     end
     -- Read bytes from output buffer and pass to output function
-    output(ffi_str(outbuf, out_sz))
+    local ok, err = output(ffi_str(outbuf, out_sz))
+    if not ok then
+        return err
+    end
 end
 
 local function inflate(input, output, bufsize, stream, inbuf, outbuf)
@@ -201,7 +204,11 @@ local function inflate(input, output, bufsize, stream, inbuf, outbuf)
                return false, "INFLATE: "..zlib_err(err), stream
             end
             -- Write the data out
-            flushOutput(stream, bufsize, output, outbuf)
+            local err = flushOutput(stream, bufsize, output, outbuf)
+            if err then
+               zlib_flateEnd(stream)
+               return false, "INFLATE: "..err
+            end
         until stream.avail_out ~= 0
 
     until err == Z_STREAM_END
@@ -246,7 +253,11 @@ local function deflate(input, output, bufsize, stream, inbuf, outbuf)
                return false, "DEFLATE: "..zlib_err(err), stream
             end
             -- Write the data out
-            flushOutput(stream, bufsize, output, outbuf)
+            local err = flushOutput(stream, bufsize, output, outbuf)
+            if err then
+               zlib_flateEnd(stream)
+               return false, "DEFLATE: "..err
+            end
         until stream.avail_out ~= 0
 
         -- In deflate mode all input must be used by this point
