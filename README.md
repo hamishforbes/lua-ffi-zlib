@@ -31,7 +31,7 @@ On error returns `false` and the error message, otherwise `true` and the last st
 # Example
 Reads a file and output the decompressed version.
 
-Roughly equivalent to running `gzip -dc file.gz`
+Roughly equivalent to running `gzip -dc file.gz > out_file | tee`
 
 ```lua
 local table_insert = table.insert
@@ -39,6 +39,7 @@ local table_concat = table.concat
 local zlib = require('lib.ffi-zlib')
 
 local f = io.open(arg[1], "rb")
+local out_f = io.open(arg[2], "w")
 
 local input = function(bufsize)
     -- Read the next chunk
@@ -52,6 +53,11 @@ end
 local output_table = {}
 local output = function(data)
     table_insert(output_table, data)
+    local ok, err = out_f:write(data)
+    if not ok then
+        -- abort decompression when error occurs
+        return nil, err
+    end
 end
 
 -- Decompress the data

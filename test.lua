@@ -112,9 +112,34 @@ if orig_in_crc ~= out_crc then
     print("CRC checksum failed")
 end
 
+local bad_output = function(data)
+    return nil, "bad output"
+end
 
 if not passing then
     print(":(")
 else
     print(":)")
+end
+
+local dump_input = function(bufsize)
+    return compressed
+end
+
+local ok, err = zlib.deflateGzip(dump_input, bad_output, chunk)
+if not ok then
+    if err ~= "DEFLATE: bad output" then
+        print(err)
+    else
+        print("abort deflation: ok")
+    end
+end
+
+local ok, err = zlib.inflateGzip(dump_input, bad_output, chunk)
+if not ok then
+    if err ~= "INFLATE: bad output" then
+        print(err)
+    else
+        print("abort inflation: ok")
+    end
 end
