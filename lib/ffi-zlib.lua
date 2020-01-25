@@ -247,7 +247,7 @@ local function deflate(input, output, bufsize, stream, inbuf, outbuf)
             err = zlib_flate(stream, mode)
 
             -- Only possible *bad* return value here
-            if err == Z_STREAM_ERR then
+            if err == Z_STREAM_ERROR then
                -- Error, clean up and return
                zlib_flateEnd(stream)
                return false, "DEFLATE: "..zlib_err(err), stream
