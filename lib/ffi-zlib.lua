@@ -6,7 +6,7 @@ local ffi_copy = ffi.copy
 local tonumber = tonumber
 
 local _M = {
-    _VERSION = '0.4.0',
+    _VERSION = '0.5.0',
 }
 
 local mt = { __index = _M }
